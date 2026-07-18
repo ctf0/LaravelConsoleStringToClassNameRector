@@ -49,6 +49,22 @@ final class ConsoleStringToClassNameRector extends AbstractRector implements Con
         );
     }
 
+    public function getNodeTypes(): array
+    {
+        return [
+            StaticCall::class,
+            MethodCall::class,
+        ];
+    }
+
+    public function getRuleDefinition(): RuleDefinition
+    {
+        return new RuleDefinition(
+            'Replace Artisan command string names with command class references.',
+            []
+        );
+    }
+
     public function refactor(Node $node): ?Node
     {
         if ($node instanceof StaticCall) {
@@ -75,14 +91,18 @@ final class ConsoleStringToClassNameRector extends AbstractRector implements Con
 
     private function refactorStaticCall(StaticCall $staticCall): ?StaticCall
     {
-        if (! $this->isName($staticCall->class, Artisan::class)
-            && ! $this->isName($staticCall->class, 'Artisan')) {
+        $isArtisan = $this->isName($staticCall->class, Artisan::class)
+            || $this->isName($staticCall->class, 'Artisan');
+        $isSchedule = $this->isName($staticCall->class, Schedule::class)
+            || $this->isName($staticCall->class, 'Schedule');
+
+        if (! $isArtisan && ! $isSchedule) {
             return null;
         }
 
         $methodName = $this->getName($staticCall->name);
 
-        if (! in_array($methodName, ['call', 'queue'], true)) {
+        if (! in_array($methodName, $isSchedule ? ['command'] : ['call', 'queue'], true)) {
             return null;
         }
 
